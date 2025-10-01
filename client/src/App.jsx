@@ -4,6 +4,8 @@ import Landing from './pages/Landing';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Dashboard from './pages/Dashboard';
+import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -22,6 +24,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <Projects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:id"
+            element={
+              <ProtectedRoute>
+                <ProjectDetail />
               </ProtectedRoute>
             }
           />
