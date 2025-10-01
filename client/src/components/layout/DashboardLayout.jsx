@@ -23,7 +23,7 @@ export default function DashboardLayout({ children }) {
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
               <Link to="/dashboard" className="flex items-center">
-                <h1 className="text-xl font-bold text-blue-600">FeedbackPulse</h1>
+                <h1 className="text-xl font-bold text-blue-600">Clarity Feed</h1>
               </Link>
               
               {/* Navigation Links */}
