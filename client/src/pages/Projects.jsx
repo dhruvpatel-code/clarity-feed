@@ -29,7 +29,7 @@ export default function Projects() {
   };
 
   const handleProjectCreated = (newProject) => {
-    setProjects([newProject, ...projects]);
+    setProjects([{ ...newProject, feedback_count: 0 }, ...projects]);
     setShowCreateModal(false);
   };
 
@@ -128,7 +128,9 @@ export default function Projects() {
                   )}
 
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                    <span>0 feedback items</span>
+                    <span>
+                      {project.feedback_count} feedback {project.feedback_count === 1 ? 'item' : 'items'}
+                    </span>
                     <span>{new Date(project.created_at).toLocaleDateString()}</span>
                   </div>
 

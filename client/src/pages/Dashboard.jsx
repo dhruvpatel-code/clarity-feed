@@ -8,6 +8,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalFeedback, setTotalFeedback] = useState(0);
 
   useEffect(() => {
     fetchProjects();
@@ -18,6 +19,10 @@ export default function Dashboard() {
       setLoading(true);
       const data = await projectsAPI.getAll();
       setProjects(data.projects);
+      
+      // Calculate total feedback across all projects
+      const total = data.projects.reduce((sum, project) => sum + (project.feedback_count || 0), 0);
+      setTotalFeedback(total);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
@@ -76,7 +81,7 @@ export default function Dashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Feedback</p>
-                <p className="text-2xl font-bold text-gray-900">0</p>
+                <p className="text-2xl font-bold text-gray-900">{totalFeedback}</p>
               </div>
             </div>
           </div>
@@ -93,6 +98,7 @@ export default function Dashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Analyzed</p>
                 <p className="text-2xl font-bold text-gray-900">0</p>
+                <p className="text-xs text-gray-500 mt-1">Coming in Day 4</p>
               </div>
             </div>
           </div>
@@ -140,13 +146,16 @@ export default function Dashboard() {
                     className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
                   >
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-sm font-semibold text-gray-900">{project.name}</h3>
                         {project.description && (
                           <p className="mt-1 text-sm text-gray-600 line-clamp-2">{project.description}</p>
                         )}
+                        <p className="mt-2 text-xs text-gray-500">
+                          {project.feedback_count} feedback {project.feedback_count === 1 ? 'item' : 'items'}
+                        </p>
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 ml-4">
                         {new Date(project.created_at).toLocaleDateString()}
                       </span>
                     </div>
