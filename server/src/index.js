@@ -14,9 +14,7 @@ const app = express();
 // Middleware
 // Update CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-vercel-app.vercel.app'] // Update this after deployment
-    : 'http://localhost:5173',
+  origin: process.env.ALLOWED_ORIGINS || 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
