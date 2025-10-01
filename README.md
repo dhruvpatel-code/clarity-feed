@@ -1,4 +1,4 @@
-# Professional README for FeedbackPulse
+# Clarity Feed
 
 Create `README.md` in your root directory:
 
