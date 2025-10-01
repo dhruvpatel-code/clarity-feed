@@ -6,22 +6,23 @@ const { authenticateToken } = require('../middleware/auth');
 // All project routes require authentication
 router.use(authenticateToken);
 
-// Get all projects for user
-router.get('/', projectController.getAllProjects);
-
-// Get single project
-router.get('/:id', projectController.getProjectById);
+// IMPORTANT: Specific routes MUST come before parameterized routes
+// Get all projects (must come before /:id)
+router.get('/projects', projectController.getAllProjects);
 
 // Create new project
-router.post('/', projectController.createProject);
+router.post('/projects', projectController.createProject);
+
+// Get project stats (must come before /:id)
+router.get('/projects/:id/stats', projectController.getProjectStats);
+
+// Get single project by ID
+router.get('/projects/:id', projectController.getProjectById);
 
 // Update project
-router.put('/:id', projectController.updateProject);
+router.put('/projects/:id', projectController.updateProject);
 
 // Delete project
-router.delete('/:id', projectController.deleteProject);
-
-// Get project statistics
-router.get('/:id/stats', projectController.getProjectStats);
+router.delete('/projects/:id', projectController.deleteProject);
 
 module.exports = router;

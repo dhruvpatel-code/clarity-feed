@@ -1,12 +1,12 @@
 const pool = require('../config/database');
-const { sanitizeInput } = require('../utils/validators');
 
 // Get all projects for the authenticated user
 async function getAllProjects(req, res) {
   try {
     const userId = req.user.id;
 
-    // Get projects with feedback counts AND analyzed counts
+    console.log(`Fetching projects for user ${userId}`);
+
     const result = await pool.query(
       `SELECT 
         p.id, 
@@ -25,12 +25,13 @@ async function getAllProjects(req, res) {
       [userId]
     );
 
-    // Convert counts from string to number
     const projects = result.rows.map(project => ({
       ...project,
-      feedback_count: parseInt(project.feedback_count),
-      analyzed_count: parseInt(project.analyzed_count)
+      feedback_count: parseInt(project.feedback_count) || 0,
+      analyzed_count: parseInt(project.analyzed_count) || 0
     }));
+
+    console.log(`Found ${projects.length} projects`);
 
     res.json({
       projects: projects,
@@ -39,7 +40,10 @@ async function getAllProjects(req, res) {
 
   } catch (error) {
     console.error('Get projects error:', error);
-    res.status(500).json({ error: 'Failed to fetch projects' });
+    res.status(500).json({ 
+      error: 'Failed to fetch projects',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
 
@@ -49,11 +53,16 @@ async function getProjectById(req, res) {
     const userId = req.user.id;
     const { id } = req.params;
 
+    console.log(`Fetching project ${id} for user ${userId}`);
+
+    // Validate ID is a number
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+
     const result = await pool.query(
-      `SELECT id, name, description, created_at, updated_at 
-       FROM projects 
-       WHERE id = $1 AND user_id = $2`,
-      [id, userId]
+      'SELECT * FROM projects WHERE id = $1 AND user_id = $2',
+      [parseInt(id), userId]
     );
 
     if (result.rows.length === 0) {
@@ -74,26 +83,18 @@ async function createProject(req, res) {
     const userId = req.user.id;
     const { name, description } = req.body;
 
-    // Validate input
+    console.log(`Creating project for user ${userId}:`, name);
+
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    if (name.length > 255) {
-      return res.status(400).json({ error: 'Project name must be less than 255 characters' });
-    }
-
-    // Sanitize inputs
-    const sanitizedName = sanitizeInput(name);
-    const sanitizedDescription = description ? sanitizeInput(description) : null;
-
-    // Insert project
     const result = await pool.query(
-      `INSERT INTO projects (user_id, name, description) 
-       VALUES ($1, $2, $3) 
-       RETURNING id, name, description, created_at, updated_at`,
-      [userId, sanitizedName, sanitizedDescription]
+      'INSERT INTO projects (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
+      [userId, name.trim(), description?.trim() || null]
     );
+
+    console.log('Project created:', result.rows[0].id);
 
     res.status(201).json({
       message: 'Project created successfully',
@@ -113,55 +114,27 @@ async function updateProject(req, res) {
     const { id } = req.params;
     const { name, description } = req.body;
 
-    // Check if project exists and belongs to user
+    // Validate ID
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+
     const checkResult = await pool.query(
       'SELECT id FROM projects WHERE id = $1 AND user_id = $2',
-      [id, userId]
+      [parseInt(id), userId]
     );
 
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Validate input
-    if (name !== undefined) {
-      if (!name || name.trim().length === 0) {
-        return res.status(400).json({ error: 'Project name cannot be empty' });
-      }
-      if (name.length > 255) {
-        return res.status(400).json({ error: 'Project name must be less than 255 characters' });
-      }
-    }
-
-    // Build update query dynamically
-    const updates = [];
-    const values = [];
-    let paramCount = 1;
-
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount}`);
-      values.push(sanitizeInput(name));
-      paramCount++;
-    }
-
-    if (description !== undefined) {
-      updates.push(`description = $${paramCount}`);
-      values.push(description ? sanitizeInput(description) : null);
-      paramCount++;
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
-
-    values.push(id, userId);
-
     const result = await pool.query(
-      `UPDATE projects 
-       SET ${updates.join(', ')} 
-       WHERE id = $${paramCount} AND user_id = $${paramCount + 1}
-       RETURNING id, name, description, created_at, updated_at`,
-      values
+      'UPDATE projects SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+      [name.trim(), description?.trim() || null, parseInt(id), userId]
     );
 
     res.json({
@@ -181,25 +154,23 @@ async function deleteProject(req, res) {
     const userId = req.user.id;
     const { id } = req.params;
 
-    // Check if project exists and belongs to user
-    const checkResult = await pool.query(
-      'SELECT id, name FROM projects WHERE id = $1 AND user_id = $2',
-      [id, userId]
+    // Validate ID
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM projects WHERE id = $1 AND user_id = $2 RETURNING id',
+      [parseInt(id), userId]
     );
 
-    if (checkResult.rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Delete project (will cascade delete related feedback)
-    await pool.query(
-      'DELETE FROM projects WHERE id = $1 AND user_id = $2',
-      [id, userId]
-    );
-
     res.json({
       message: 'Project deleted successfully',
-      projectId: parseInt(id)
+      projectId: result.rows[0].id
     });
 
   } catch (error) {
@@ -214,41 +185,45 @@ async function getProjectStats(req, res) {
     const userId = req.user.id;
     const { id } = req.params;
 
-    // Verify project belongs to user
-    const projectResult = await pool.query(
+    console.log(`Fetching stats for project ${id}`);
+
+    // Validate ID
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+
+    const projectCheck = await pool.query(
       'SELECT id FROM projects WHERE id = $1 AND user_id = $2',
-      [id, userId]
+      [parseInt(id), userId]
     );
 
-    if (projectResult.rows.length === 0) {
+    if (projectCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Get feedback counts
-    const feedbackResult = await pool.query(
+    const statsResult = await pool.query(
       `SELECT 
-         COUNT(f.id) as total,
-         COUNT(a.id) as analyzed
+         COUNT(f.id) as total_feedback,
+         COUNT(a.id) as analyzed,
+         COUNT(CASE WHEN a.id IS NULL THEN 1 END) as pending
        FROM feedback f
        LEFT JOIN analysis a ON f.id = a.feedback_id
        WHERE f.project_id = $1`,
-      [id]
+      [parseInt(id)]
     );
 
-    const counts = feedbackResult.rows[0];
-    const total = parseInt(counts.total);
-    const analyzed = parseInt(counts.analyzed);
+    const stats = statsResult.rows[0];
 
-    const stats = {
-      totalFeedback: total,
-      analyzed: analyzed,
-      pending: total - analyzed
-    };
-
-    res.json({ stats });
+    res.json({
+      stats: {
+        totalFeedback: parseInt(stats.total_feedback) || 0,
+        analyzed: parseInt(stats.analyzed) || 0,
+        pending: parseInt(stats.pending) || 0
+      }
+    });
 
   } catch (error) {
-    console.error('Get project stats error:', error);
+    console.error('Get stats error:', error);
     res.status(500).json({ error: 'Failed to fetch project statistics' });
   }
 }
