@@ -133,4 +133,32 @@ export const feedbackAPI = {
   },
 };
 
+// Analysis API calls
+export const analysisAPI = {
+  analyzeSingle: async (projectId, feedbackId) => {
+    const response = await api.post(`/projects/${projectId}/feedback/${feedbackId}/analyze`);
+    return response.data;
+  },
+
+  analyzeProject: async (projectId) => {
+    const response = await api.post(`/projects/${projectId}/analyze`);
+    return response.data;
+  },
+
+  getAnalysis: async (projectId, feedbackId) => {
+    const response = await api.get(`/projects/${projectId}/feedback/${feedbackId}/analysis`);
+    return response.data;
+  },
+
+  getAllAnalyses: async (projectId) => {
+    const response = await api.get(`/projects/${projectId}/analyses`);
+    return response.data;
+  },
+
+  deleteAnalysis: async (projectId, feedbackId) => {
+    const response = await api.delete(`/projects/${projectId}/feedback/${feedbackId}/analysis`);
+    return response.data;
+  },
+};
+
 export default api;

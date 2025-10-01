@@ -4,7 +4,8 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import UploadCSV from '../components/feedback/UploadCSV';
 import ManualInput from '../components/feedback/ManualInput';
 import FeedbackTable from '../components/feedback/FeedbackTable';
-import { projectsAPI, feedbackAPI } from '../services/api';
+import AnalysisStats from '../components/analysis/AnalysisStats';
+import { projectsAPI, feedbackAPI, analysisAPI } from '../services/api';
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -12,15 +13,18 @@ export default function ProjectDetail() {
   const [project, setProject] = useState(null);
   const [feedback, setFeedback] = useState([]);
   const [stats, setStats] = useState(null);
+  const [analysisStats, setAnalysisStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('table'); // 'table', 'upload', 'manual'
+  const [activeTab, setActiveTab] = useState('table');
 
   useEffect(() => {
     fetchProject();
     fetchFeedback();
     fetchStats();
+    fetchAnalysisStats();
   }, [id]);
 
   const fetchProject = async () => {
@@ -58,6 +62,41 @@ export default function ProjectDetail() {
     }
   };
 
+  const fetchAnalysisStats = async () => {
+    try {
+      const data = await analysisAPI.getAllAnalyses(id);
+      setAnalysisStats(data.stats);
+    } catch (error) {
+      console.error('Failed to fetch analysis stats:', error);
+    }
+  };
+
+  const handleAnalyzeAll = async () => {
+    if (!confirm(`This will analyze all unanalyzed feedback using AI. This may take a few minutes and will use Claude API credits. Continue?`)) {
+      return;
+    }
+
+    try {
+      setAnalyzing(true);
+      setError('');
+      
+      const result = await analysisAPI.analyzeProject(id);
+      
+      alert(`Analysis complete! Successfully analyzed ${result.analyzed} out of ${result.total} feedback items.`);
+      
+      // Refresh data
+      await fetchStats();
+      await fetchAnalysisStats();
+      await fetchFeedback();
+      
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setError(err.response?.data?.error || 'Failed to analyze feedback');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
       return;
@@ -76,7 +115,8 @@ export default function ProjectDetail() {
     try {
       await feedbackAPI.delete(id, feedbackId);
       setFeedback(feedback.filter(f => f.id !== feedbackId));
-      fetchStats(); // Update stats
+      fetchStats();
+      fetchAnalysisStats();
     } catch (error) {
       console.error('Failed to delete feedback:', error);
       alert('Failed to delete feedback');
@@ -106,7 +146,7 @@ export default function ProjectDetail() {
     );
   }
 
-  if (error || !project) {
+  if (error && !project) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
@@ -151,13 +191,43 @@ export default function ProjectDetail() {
               Created on {new Date(project.created_at).toLocaleDateString()}
             </p>
           </div>
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 transition-colors text-sm font-medium"
-          >
-            Delete Project
-          </button>
+          <div className="flex gap-2">
+            {stats && stats.pending > 0 && (
+              <button
+                onClick={handleAnalyzeAll}
+                disabled={analyzing}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                {analyzing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Analyze All ({stats.pending})
+                  </>
+                )}
+              </button>
+            )}
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 transition-colors text-sm font-medium"
+            >
+              Delete Project
+            </button>
+          </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
 
         {/* Stats Cards */}
         {stats && (
@@ -168,12 +238,19 @@ export default function ProjectDetail() {
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-600">Analyzed</h3>
-              <p className="mt-2 text-3xl font-bold text-gray-900">{stats.analyzed}</p>
+              <p className="mt-2 text-3xl font-bold text-green-600">{stats.analyzed}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-600">Pending</h3>
-              <p className="mt-2 text-3xl font-bold text-gray-900">{stats.pending}</p>
+              <p className="mt-2 text-3xl font-bold text-orange-600">{stats.pending}</p>
             </div>
+          </div>
+        )}
+
+        {/* Analysis Stats */}
+        {analysisStats && analysisStats.total > 0 && (
+          <div className="mb-8">
+            <AnalysisStats stats={analysisStats} />
           </div>
         )}
 
@@ -217,8 +294,10 @@ export default function ProjectDetail() {
         {activeTab === 'table' && (
           <FeedbackTable
             feedback={feedback}
+            projectId={id}
             onDelete={handleDeleteFeedback}
             loading={feedbackLoading}
+            onAnalysisComplete={fetchAnalysisStats}
           />
         )}
 

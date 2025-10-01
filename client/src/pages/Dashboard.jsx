@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalFeedback, setTotalFeedback] = useState(0);
+  const [totalAnalyzed, setTotalAnalyzed] = useState(0);
 
   useEffect(() => {
     fetchProjects();
@@ -21,8 +22,12 @@ export default function Dashboard() {
       setProjects(data.projects);
       
       // Calculate total feedback across all projects
-      const total = data.projects.reduce((sum, project) => sum + (project.feedback_count || 0), 0);
-      setTotalFeedback(total);
+      const feedback = data.projects.reduce((sum, project) => sum + (project.feedback_count || 0), 0);
+      setTotalFeedback(feedback);
+
+      // Calculate total analyzed across all projects
+      const analyzed = data.projects.reduce((sum, project) => sum + (project.analyzed_count || 0), 0);
+      setTotalAnalyzed(analyzed);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
@@ -38,6 +43,11 @@ export default function Dashboard() {
     }
     return 'there';
   };
+
+  // Calculate percentage
+  const analyzedPercentage = totalFeedback > 0 
+    ? Math.round((totalAnalyzed / totalFeedback) * 100) 
+    : 0;
 
   return (
     <DashboardLayout>
@@ -97,8 +107,12 @@ export default function Dashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Analyzed</p>
-                <p className="text-2xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-1">Coming in Day 4</p>
+                <p className="text-2xl font-bold text-gray-900">{totalAnalyzed}</p>
+                {totalFeedback > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {analyzedPercentage}% of total
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -151,9 +165,17 @@ export default function Dashboard() {
                         {project.description && (
                           <p className="mt-1 text-sm text-gray-600 line-clamp-2">{project.description}</p>
                         )}
-                        <p className="mt-2 text-xs text-gray-500">
-                          {project.feedback_count} feedback {project.feedback_count === 1 ? 'item' : 'items'}
-                        </p>
+                        <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                          <span>{project.feedback_count} feedback {project.feedback_count === 1 ? 'item' : 'items'}</span>
+                          {project.analyzed_count > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-green-600 font-medium">
+                                {project.analyzed_count} analyzed
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <span className="text-xs text-gray-500 ml-4">
                         {new Date(project.created_at).toLocaleDateString()}

@@ -6,7 +6,7 @@ async function getAllProjects(req, res) {
   try {
     const userId = req.user.id;
 
-    // Get projects with feedback counts
+    // Get projects with feedback counts AND analyzed counts
     const result = await pool.query(
       `SELECT 
         p.id, 
@@ -14,19 +14,22 @@ async function getAllProjects(req, res) {
         p.description, 
         p.created_at, 
         p.updated_at,
-        COUNT(f.id) as feedback_count
+        COUNT(DISTINCT f.id) as feedback_count,
+        COUNT(DISTINCT a.id) as analyzed_count
        FROM projects p
        LEFT JOIN feedback f ON p.id = f.project_id
+       LEFT JOIN analysis a ON f.id = a.feedback_id
        WHERE p.user_id = $1 
        GROUP BY p.id
        ORDER BY p.created_at DESC`,
       [userId]
     );
 
-    // Convert feedback_count from string to number
+    // Convert counts from string to number
     const projects = result.rows.map(project => ({
       ...project,
-      feedback_count: parseInt(project.feedback_count)
+      feedback_count: parseInt(project.feedback_count),
+      analyzed_count: parseInt(project.analyzed_count)
     }));
 
     res.json({
@@ -221,17 +224,25 @@ async function getProjectStats(req, res) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Get feedback count
+    // Get feedback counts
     const feedbackResult = await pool.query(
-      'SELECT COUNT(*) as total FROM feedback WHERE project_id = $1',
+      `SELECT 
+         COUNT(f.id) as total,
+         COUNT(a.id) as analyzed
+       FROM feedback f
+       LEFT JOIN analysis a ON f.id = a.feedback_id
+       WHERE f.project_id = $1`,
       [id]
     );
 
-    // For now, all feedback is pending (will be updated when analysis is added)
+    const counts = feedbackResult.rows[0];
+    const total = parseInt(counts.total);
+    const analyzed = parseInt(counts.analyzed);
+
     const stats = {
-      totalFeedback: parseInt(feedbackResult.rows[0].total),
-      analyzed: 0,
-      pending: parseInt(feedbackResult.rows[0].total)
+      totalFeedback: total,
+      analyzed: analyzed,
+      pending: total - analyzed
     };
 
     res.json({ stats });

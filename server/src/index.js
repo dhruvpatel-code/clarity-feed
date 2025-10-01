@@ -4,7 +4,8 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const projectRoutes = require('./routes/projects');
-const feedbackRoutes = require('./routes/feedback'); // Add this
+const feedbackRoutes = require('./routes/feedback');
+const analysisRoutes = require('./routes/analysis');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
@@ -12,7 +13,7 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increase limit for CSV uploads
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Apply general rate limiting to all API routes
@@ -26,7 +27,8 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
-app.use('/api', feedbackRoutes); // Add this
+app.use('/api', feedbackRoutes);
+app.use('/api', analysisRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

@@ -1,7 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { analysisAPI } from '../../services/api';
 
-export default function FeedbackTable({ feedback, onDelete, loading }) {
+export default function FeedbackTable({ feedback, projectId, onDelete, loading, onAnalysisComplete }) {
   const [deletingId, setDeletingId] = useState(null);
+  const [analyses, setAnalyses] = useState({});
+  const [loadingAnalyses, setLoadingAnalyses] = useState(true);
+
+  useEffect(() => {
+    if (projectId) {
+      fetchAnalyses();
+    }
+  }, [projectId, feedback]);
+
+  const fetchAnalyses = async () => {
+    try {
+      setLoadingAnalyses(true);
+      const data = await analysisAPI.getAllAnalyses(projectId);
+      
+      // Create a map of feedback_id to analysis
+      const analysisMap = {};
+      data.analyses.forEach(analysis => {
+        analysisMap[analysis.feedback_id] = analysis;
+      });
+      
+      setAnalyses(analysisMap);
+    } catch (error) {
+      console.error('Failed to fetch analyses:', error);
+    } finally {
+      setLoadingAnalyses(false);
+    }
+  };
 
   const handleDelete = async (feedbackId) => {
     if (!confirm('Are you sure you want to delete this feedback?')) {
@@ -13,6 +41,36 @@ export default function FeedbackTable({ feedback, onDelete, loading }) {
       await onDelete(feedbackId);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const getSentimentColor = (sentiment) => {
+    switch (sentiment) {
+      case 'positive':
+        return 'bg-green-100 text-green-800';
+      case 'negative':
+        return 'bg-red-100 text-red-800';
+      case 'neutral':
+        return 'bg-gray-100 text-gray-800';
+      case 'mixed':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getUrgencyColor = (urgency) => {
+    switch (urgency) {
+      case 'critical':
+        return 'bg-red-100 text-red-800';
+      case 'high':
+        return 'bg-orange-100 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -56,6 +114,9 @@ export default function FeedbackTable({ feedback, onDelete, loading }) {
                 Customer
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Analysis
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Source
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -67,52 +128,87 @@ export default function FeedbackTable({ feedback, onDelete, loading }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {feedback.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <p className="text-sm text-gray-900 line-clamp-2">
-                    {item.original_text}
-                  </p>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm">
-                    {item.customer_name && (
-                      <p className="text-gray-900">{item.customer_name}</p>
+            {feedback.map((item) => {
+              const analysis = analyses[item.id];
+              
+              return (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-gray-900 line-clamp-2">
+                      {item.original_text}
+                    </p>
+                    {analysis && analysis.key_points && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {analysis.key_points.slice(0, 2).map((point, idx) => (
+                          <span
+                            key={idx}
+                            className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded"
+                          >
+                            {point}
+                          </span>
+                        ))}
+                      </div>
                     )}
-                    {item.customer_email && (
-                      <p className="text-gray-500">{item.customer_email}</p>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm">
+                      {item.customer_name && (
+                        <p className="text-gray-900">{item.customer_name}</p>
+                      )}
+                      {item.customer_email && (
+                        <p className="text-gray-500 text-xs">{item.customer_email}</p>
+                      )}
+                      {!item.customer_name && !item.customer_email && (
+                        <p className="text-gray-400">—</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {loadingAnalyses ? (
+                      <span className="text-xs text-gray-400">Loading...</span>
+                    ) : analysis ? (
+                      <div className="space-y-1">
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getSentimentColor(analysis.sentiment)}`}>
+                          {analysis.sentiment}
+                        </span>
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ml-1 ${getUrgencyColor(analysis.urgency)}`}>
+                          {analysis.urgency}
+                        </span>
+                        {analysis.category && (
+                          <p className="text-xs text-gray-500 mt-1">{analysis.category}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">Not analyzed</span>
                     )}
-                    {!item.customer_name && !item.customer_email && (
-                      <p className="text-gray-400">—</p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    item.source === 'csv'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {item.source}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {item.date_received
-                    ? new Date(item.date_received).toLocaleDateString()
-                    : new Date(item.created_at).toLocaleDateString()
-                  }
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    disabled={deletingId === item.id}
-                    className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                  >
-                    {deletingId === item.id ? 'Deleting...' : 'Delete'}
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      item.source === 'csv'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {item.source}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {item.date_received
+                      ? new Date(item.date_received).toLocaleDateString()
+                      : new Date(item.created_at).toLocaleDateString()
+                    }
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                    >
+                      {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
