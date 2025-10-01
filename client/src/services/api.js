@@ -29,7 +29,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -90,6 +89,46 @@ export const projectsAPI = {
 
   getStats: async (id) => {
     const response = await api.get(`/projects/${id}/stats`);
+    return response.data;
+  },
+};
+
+// Feedback API calls
+export const feedbackAPI = {
+  getAll: async (projectId) => {
+    const response = await api.get(`/projects/${projectId}/feedback`);
+    return response.data;
+  },
+
+  getById: async (projectId, feedbackId) => {
+    const response = await api.get(`/projects/${projectId}/feedback/${feedbackId}`);
+    return response.data;
+  },
+
+  create: async (projectId, text, customerName, customerEmail, dateReceived) => {
+    const response = await api.post(`/projects/${projectId}/feedback`, {
+      text,
+      customerName,
+      customerEmail,
+      dateReceived
+    });
+    return response.data;
+  },
+
+  uploadCSV: async (projectId, csvData) => {
+    const response = await api.post(`/projects/${projectId}/feedback/upload-csv`, {
+      csvData
+    });
+    return response.data;
+  },
+
+  delete: async (projectId, feedbackId) => {
+    const response = await api.delete(`/projects/${projectId}/feedback/${feedbackId}`);
+    return response.data;
+  },
+
+  deleteAll: async (projectId) => {
+    const response = await api.delete(`/projects/${projectId}/feedback`);
     return response.data;
   },
 };

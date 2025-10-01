@@ -6,17 +6,32 @@ async function getAllProjects(req, res) {
   try {
     const userId = req.user.id;
 
+    // Get projects with feedback counts
     const result = await pool.query(
-      `SELECT id, name, description, created_at, updated_at 
-       FROM projects 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC`,
+      `SELECT 
+        p.id, 
+        p.name, 
+        p.description, 
+        p.created_at, 
+        p.updated_at,
+        COUNT(f.id) as feedback_count
+       FROM projects p
+       LEFT JOIN feedback f ON p.id = f.project_id
+       WHERE p.user_id = $1 
+       GROUP BY p.id
+       ORDER BY p.created_at DESC`,
       [userId]
     );
 
+    // Convert feedback_count from string to number
+    const projects = result.rows.map(project => ({
+      ...project,
+      feedback_count: parseInt(project.feedback_count)
+    }));
+
     res.json({
-      projects: result.rows,
-      total: result.rows.length
+      projects: projects,
+      total: projects.length
     });
 
   } catch (error) {
@@ -206,11 +221,17 @@ async function getProjectStats(req, res) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // For now, return basic stats (will be enhanced when feedback table exists)
+    // Get feedback count
+    const feedbackResult = await pool.query(
+      'SELECT COUNT(*) as total FROM feedback WHERE project_id = $1',
+      [id]
+    );
+
+    // For now, all feedback is pending (will be updated when analysis is added)
     const stats = {
-      totalFeedback: 0,
+      totalFeedback: parseInt(feedbackResult.rows[0].total),
       analyzed: 0,
-      pending: 0
+      pending: parseInt(feedbackResult.rows[0].total)
     };
 
     res.json({ stats });
