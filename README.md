@@ -1,7 +1,5 @@
 # Clarity Feed
 
-Create `README.md` in your root directory:
-
 ```markdown
 # Clarity Feed
 
