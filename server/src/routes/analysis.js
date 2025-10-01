@@ -21,4 +21,7 @@ router.get('/projects/:projectId/analyses', analysisController.getProjectAnalyse
 // Delete analysis
 router.delete('/projects/:projectId/feedback/:feedbackId/analysis', analysisController.deleteAnalysis);
 
+// Generate executive summary
+router.post('/projects/:projectId/summary', analysisController.generateProjectSummary);
+
 module.exports = router;

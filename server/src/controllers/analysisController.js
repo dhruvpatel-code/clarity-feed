@@ -320,10 +320,64 @@ async function deleteAnalysis(req, res) {
   }
 }
 
+// Generate executive summary for project
+async function generateProjectSummary(req, res) {
+  try {
+    const userId = req.user.id;
+    const { projectId } = req.params;
+
+    // Verify project belongs to user
+    const projectCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND user_id = $2',
+      [projectId, userId]
+    );
+
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Get all analyses
+    const analysesResult = await pool.query(
+      `SELECT 
+         a.*,
+         f.original_text
+       FROM analysis a
+       JOIN feedback f ON a.feedback_id = f.id
+       WHERE f.project_id = $1`,
+      [projectId]
+    );
+
+    if (analysesResult.rows.length === 0) {
+      return res.status(400).json({ 
+        error: 'No analyzed feedback found',
+        message: 'Analyze some feedback first before generating a summary.'
+      });
+    }
+
+    console.log(`Generating executive summary for ${analysesResult.rows.length} feedback items...`);
+
+    // Generate summary with AI
+    const summary = await aiService.generateExecutiveSummary(analysesResult.rows);
+
+    res.json({
+      message: 'Executive summary generated successfully',
+      summary
+    });
+
+  } catch (error) {
+    console.error('Generate summary error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate executive summary',
+      details: error.message 
+    });
+  }
+}
+
 module.exports = {
   analyzeSingleFeedback,
   analyzeProjectFeedback,
   getFeedbackAnalysis,
   getProjectAnalyses,
-  deleteAnalysis
+  deleteAnalysis,
+  generateProjectSummary
 };

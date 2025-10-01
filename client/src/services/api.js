@@ -159,6 +159,11 @@ export const analysisAPI = {
     const response = await api.delete(`/projects/${projectId}/feedback/${feedbackId}/analysis`);
     return response.data;
   },
+  
+  generateSummary: async (projectId) => {
+    const response = await api.post(`/projects/${projectId}/summary`);
+    return response.data;
+  },
 };
 
 export default api;

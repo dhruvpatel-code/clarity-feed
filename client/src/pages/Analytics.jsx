@@ -6,6 +6,7 @@ import ThemesChart from '../components/analytics/ThemesChart';
 import CategoryChart from '../components/analytics/CategoryChart';
 import UrgencyOverview from '../components/analytics/UrgencyOverview';
 import KeyInsights from '../components/analytics/KeyInsights';
+import ExecutiveSummary from '../components/analytics/ExecutiveSummary';
 import { projectsAPI, analysisAPI } from '../services/api';
 
 export default function Analytics() {
@@ -134,6 +135,11 @@ export default function Analytics() {
             <p className="text-sm font-medium text-gray-600">High Priority</p>
             <p className="text-3xl font-bold text-orange-600 mt-2">{stats.urgency.high}</p>
           </div>
+        </div>
+
+        {/* Executive Summary */}
+        <div className="mb-8">
+          <ExecutiveSummary projectId={id} />
         </div>
 
         {/* Key Insights */}
