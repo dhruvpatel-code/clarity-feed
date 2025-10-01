@@ -6,6 +6,7 @@ import Register from './components/auth/Register';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
+import Analytics from './pages/Analytics'; // Add this
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -40,6 +41,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProjectDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:id/analytics"
+            element={
+              <ProtectedRoute>
+                <Analytics />
               </ProtectedRoute>
             }
           />
