@@ -60,7 +60,6 @@ export const authAPI = {
   },
 };
 
-// Projects API calls
 export const projectsAPI = {
   getAll: async () => {
     const response = await api.get('/projects');
@@ -72,13 +71,13 @@ export const projectsAPI = {
     return response.data;
   },
 
-  create: async (name, description) => {
-    const response = await api.post('/projects', { name, description });
+  create: async (projectData) => {
+    const response = await api.post('/projects', projectData);
     return response.data;
   },
 
-  update: async (id, data) => {
-    const response = await api.put(`/projects/${id}`, data);
+  update: async (id, projectData) => {
+    const response = await api.put(`/projects/${id}`, projectData);
     return response.data;
   },
 
@@ -90,7 +89,7 @@ export const projectsAPI = {
   getStats: async (id) => {
     const response = await api.get(`/projects/${id}/stats`);
     return response.data;
-  },
+  }
 };
 
 // Feedback API calls
