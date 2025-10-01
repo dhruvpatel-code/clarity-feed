@@ -20,10 +20,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Register function
-  const register = async (email, password, name) => {
+  const register = async (email, password, firstName, lastName) => {
     try {
       setError(null);
-      const data = await authAPI.register(email, password, name);
+      const data = await authAPI.register(email, password, firstName, lastName);
       
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
