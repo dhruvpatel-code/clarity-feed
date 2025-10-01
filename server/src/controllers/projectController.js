@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 
+
 // Get all projects for the authenticated user
 async function getAllProjects(req, res) {
   try {
@@ -78,20 +79,33 @@ async function getProjectById(req, res) {
 }
 
 // Create new project
+// Create new project
 async function createProject(req, res) {
   try {
     const userId = req.user.id;
     const { name, description } = req.body;
 
-    console.log(`Creating project for user ${userId}:`, name);
+    console.log(`Creating project for user ${userId}:`, { name, description });
 
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({ error: 'Project name is required' });
+    // Validate name exists and is a string
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ error: 'Project name is required and must be a string' });
     }
+
+    // Trim and validate name is not empty
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      return res.status(400).json({ error: 'Project name cannot be empty' });
+    }
+
+    // Handle description safely
+    const trimmedDescription = description && typeof description === 'string' 
+      ? description.trim() 
+      : null;
 
     const result = await pool.query(
       'INSERT INTO projects (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
-      [userId, name.trim(), description?.trim() || null]
+      [userId, trimmedName, trimmedDescription]
     );
 
     console.log('Project created:', result.rows[0].id);
@@ -108,6 +122,7 @@ async function createProject(req, res) {
 }
 
 // Update project
+// Update project
 async function updateProject(req, res) {
   try {
     const userId = req.user.id;
@@ -119,8 +134,14 @@ async function updateProject(req, res) {
       return res.status(400).json({ error: 'Invalid project ID' });
     }
 
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({ error: 'Project name is required' });
+    // Validate name
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ error: 'Project name is required and must be a string' });
+    }
+
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      return res.status(400).json({ error: 'Project name cannot be empty' });
     }
 
     const checkResult = await pool.query(
@@ -132,9 +153,14 @@ async function updateProject(req, res) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Handle description safely
+    const trimmedDescription = description && typeof description === 'string' 
+      ? description.trim() 
+      : null;
+
     const result = await pool.query(
       'UPDATE projects SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-      [name.trim(), description?.trim() || null, parseInt(id), userId]
+      [trimmedName, trimmedDescription, parseInt(id), userId]
     );
 
     res.json({
