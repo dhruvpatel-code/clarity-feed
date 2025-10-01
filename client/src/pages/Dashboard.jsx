@@ -10,6 +10,18 @@ export default function Dashboard() {
     navigate('/login');
   };
 
+  // Get display name
+  const getDisplayName = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    } else if (user?.firstName) {
+      return user.firstName;
+    } else if (user?.lastName) {
+      return user.lastName;
+    }
+    return 'User';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm">
@@ -35,11 +47,16 @@ export default function Dashboard() {
         <div className="px-4 py-6 sm:px-0">
           <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Welcome, {user?.name || 'User'}! 🎉
+              Welcome, {getDisplayName()}! 🎉
             </h2>
             <p className="text-gray-600">
               Authentication is working! You're now logged in to your dashboard.
             </p>
+            {(user?.firstName || user?.lastName) && (
+              <p className="text-gray-500 text-sm mt-2">
+                Full name: {user.firstName} {user.lastName}
+              </p>
+            )}
           </div>
         </div>
       </main>
