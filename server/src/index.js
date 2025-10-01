@@ -12,7 +12,13 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const app = express();
 
 // Middleware
-app.use(cors());
+// Update CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-vercel-app.vercel.app'] // Update this after deployment
+    : 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
